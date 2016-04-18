@@ -205,6 +205,8 @@ void process_print_list()
 struct parameters_to_start_process
 {
   char* command_line;
+  struct semaphore semaphore;
+  bool success;
 };
 
 static void
@@ -223,9 +225,11 @@ process_execute (const char *command_line)
   int command_line_size = strlen(command_line) + 1;
   tid_t thread_id = -1;
   int  process_id = -1;
-
+  
   /* LOCAL variable will cease existence when function return! */
   struct parameters_to_start_process arguments;
+
+  sema_init(&arguments.semaphore, 0);
 
   debug("%s#%d: process_execute(\"%s\") ENTERED\n",
         thread_current()->name,
@@ -243,10 +247,15 @@ process_execute (const char *command_line)
   thread_id = thread_create (debug_name, PRI_DEFAULT,
                              (thread_func*)start_process, &arguments);
 
-  process_id = thread_id;
+  if(arguments.success && thread_id != TID_ERROR){
+    process_id = thread_id;
+    sema_down(&arguments.semaphore);
+  }
+  else 
+    process_id = -1;
 
   /* AVOID bad stuff by turning off. YOU will fix this! */
-  power_off();
+  //power_off();
   
   
   /* WHICH thread may still be using this right now? */
@@ -285,6 +294,7 @@ start_process (struct parameters_to_start_process* parameters)
   if_.eflags = FLAG_IF | FLAG_MBS;
 
   success = load (file_name, &if_.eip, &if_.esp);
+  parameters->success = success;
 
   debug("%s#%d: start_process(...): load returned %d\n",
         thread_current()->name,
@@ -310,9 +320,11 @@ start_process (struct parameters_to_start_process* parameters)
        the process start, so this is the place to dump stack content
        for debug purposes. Disable the dump when it works. */
     
-    dump_stack ( PHYS_BASE + 15, PHYS_BASE - if_.esp + 16 );
+    //dump_stack ( PHYS_BASE + 15, PHYS_BASE - if_.esp + 16 );
 
   }
+
+  sema_up(&parameters->semaphore);
 
   debug("%s#%d: start_process(\"%s\") DONE\n",
         thread_current()->name,

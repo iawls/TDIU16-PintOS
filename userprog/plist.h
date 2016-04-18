@@ -29,5 +29,13 @@
      
  */
 
+  void plist_print();
+
+  int plist_insert(int id, char* name, int parent_id, int exit_status);
+  
+  int plist_find(int id);
+
+  void plist_remove(int id);
+
 
 #endif

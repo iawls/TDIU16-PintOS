@@ -4,6 +4,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/init.h"
+#include "plist.h"
 
 
 /* header files you probably need, they are not used yet */
@@ -226,6 +227,10 @@ syscall_handler (struct intr_frame *f)
 
     case SYS_FILESIZE : 
 	sys_filesize(f);
+	break;
+    
+    case SYS_PLIST : 
+	plist_print();
 	break;
 
     default:
