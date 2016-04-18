@@ -183,3 +183,29 @@ inumber (int fd)
   return syscall1 (SYS_INUMBER, fd);
 }
 
+//uppgift 17
+
+void 
+sleep(int millis)
+{
+}
+
+void 
+plist (void)
+{
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
