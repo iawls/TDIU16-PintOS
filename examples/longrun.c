@@ -65,26 +65,28 @@ int main(int argc, char* argv[])
   
   for (j = 0; j < repeat; ++j)
   {
-    for (i = 0; i < simul; ++i)
-    {
-      snprintf(cmd, 15, "dummy %i", j * simul + i);
-      pid[i] = exec(cmd);
-    }
+        for (i = 0; i < simul; ++i)
+        {
+          snprintf(cmd, 15, "dummy %i", j * simul + i);
+          pid[i] = exec(cmd);
+          //printf("\n\n############## PROCESS ID: %d ##########################3###\n\n", pid[i]);
+        }
     
     /* There will never be more than 'simul' processes running
      * simultaneously, but in total there will be a lot of processes
      * (repeat * simul). Just as you can expect in a real system.
      */
-    for (i = 0; i < simul; ++i)
-    {
-      /* probably nothing left to wait for */
-      if (pid[i] == -1)
-      {
-        printf("ERROR: Aborting test. Some execution(s) failed\n");
-        return j+1;
-      }
-      wait(pid[i]);      
-    }
+        for (i = 0; i < simul; ++i)
+        {
+                  /* probably nothing left to wait for */
+                  if (pid[i] == -1)
+                  {
+                    printf("ERROR: Aborting test. Some execution(s) failed\n");
+                    return j+1;
+                  }
+          wait(pid[i]);      
+        }
+        
   }
   return 0;
 }

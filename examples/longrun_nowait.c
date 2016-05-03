@@ -78,12 +78,14 @@ int main(int argc, char* argv[])
     
     exec(cmd);
     
-//    plist();
 
+    //printf("£##########################################################################3"); 
     /* since we do not have the wait systemcall yet */
     printf("Now entering busy-loop to let some processes finish\n");
+    
     while (ticks--)
       ;
   }
+  plist();
   return 0;
 }
