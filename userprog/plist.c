@@ -23,8 +23,8 @@ void plist_print(){
   //printf("\n\n### PROCESS LIST###\n\n");
   for(i; i < list_size ; ++i){
     if(process_list[i].used && process_list[i].name != NULL){
-    printf("INDEX: %d PID: %d NAME: %s PARENT: %d EXIT_STATUS: %d USED: %d WAITING: %d\n",i , process_list[i].pid, 
-    process_list[i].name, process_list[i].parent, process_list[i].exit_status, process_list[i].used, process_list[i].waiting);
+    printf("INDEX: %3d PID: %3d NAME: %15s PARENT: %3d EXIT_STATUS: %3d USED: %1d ALIVE: %1d\n",i , process_list[i].pid, 
+    process_list[i].name, process_list[i].parent, process_list[i].exit_status, process_list[i].used, process_list[i].alive);
     }
   }
    //printf("\n\n### END PROCESS LIST###\n\n");
@@ -47,11 +47,14 @@ int plist_insert(int id, char* name, int parent_id){
 	    process_list[i].parent_alive = true;
 	    process_list[i].used = true;	
 	    process_list[i].waiting = false;
+	    process_list[i].exit_status = -3;
 	    sema_init(&process_list[i].semaphore,0);
 	    //printf("\nplist_insert index: %d, pid: %d \n", i, id);
 	return id;
     }
   }
+//plist_print();
+//printf("\n\n############### INSERT FAILED, ID: %d ###############################\n\n",id);
 
 return -1;
 }

@@ -194,17 +194,18 @@ void process_init(void)
  * from thread_exit - do not call cleanup twice! */
 void process_exit(int status UNUSED)
 {   
-
+     printf("\n\n ######################### START EXIT , TID: %d ##############################\n\n",thread_current()->tid);
    //printf("process: ");
    struct plist* process = plist_find(thread_current()->tid);
    
-   if(process != NULL){
+   if(process != NULL  && process->used){
    
      process->exit_status = status;
      
     // printf("parent process: ");
      struct plist* parent = plist_find(process->parent);
      
+
      process->alive = false;
      sema_up(&process->semaphore);
      
@@ -213,7 +214,7 @@ void process_exit(int status UNUSED)
           thread_exit();
        }
 
-	   if(parent != NULL){
+	   if(parent != NULL && parent->used){
 
 		    if(!parent->alive){
 		       // printf("\n\n\nPLIST_REMOVE IN IF ID: %dn\n\n",process->pid);
@@ -228,7 +229,10 @@ void process_exit(int status UNUSED)
 		
 	plist_remove_zombies(process->pid);
    }
-
+   else{
+     //plist_print();
+     printf("\n\n ######################### PROCESS == NULL, TID: %d ##############################\n\n",thread_current()->tid);
+    }
    thread_exit();
 }
 
@@ -367,8 +371,8 @@ start_process (struct parameters_to_start_process* parameters)
 
   }
 
-  sema_up(&parameters->semaphore);
 
+  sema_up(&parameters->semaphore);
   debug("%s#%d: start_process(\"%s\") DONE\n",
         thread_current()->name,
         thread_current()->tid,
@@ -457,12 +461,15 @@ process_cleanup (void)
    */
 
 
+  
   struct plist* tmp = plist_find(thread_current()->tid);
   if(tmp != NULL){
     status = tmp->exit_status;
   }
-  else
-    debug("#\nprocess_cleanup failed, id: %d\n",thread_current()->tid);
+  else{
+    debug("#\nprocess_cleanup failed, id: %d\n\n\n\n\n\n\n\n",thread_current()->tid);
+
+    }
 
   printf("%s: exit(%d)\n", thread_name(), status);
   
@@ -481,6 +488,7 @@ process_cleanup (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }  
+
   debug("%s#%d: process_cleanup() DONE with status %d\n",
         cur->name, cur->tid, status);
 }
