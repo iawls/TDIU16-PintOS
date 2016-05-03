@@ -221,7 +221,7 @@ void process_exit(int status UNUSED)
 		    }
 		
 	   }
-	   	else if(process->parent >= 3  && parent == NULL){
+	   	else{
 	     //printf("\n\n\nPLIST_REMOVE IN ELSE ID: %dn\n\n",process->pid);
 		 plist_remove(process->pid);
 		 }	
