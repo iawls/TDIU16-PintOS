@@ -1,6 +1,7 @@
 #ifndef _PLIST_H_
 #define _PLIST_H_
-
+#include <stdbool.h>
+#include "../threads/synch.h"
 
 /* Place functions to handle a running process here (process list).
    
@@ -28,14 +29,30 @@
      clean, readable format.
      
  */
+  
+ struct plist{
+    char* name;
+    int pid;
+    int parent;
+    int exit_status;
+    bool alive;
+    bool parent_alive;
+    bool used; 
+    bool waiting;
+    struct semaphore semaphore;
+  };
+
+
+  
+  void plist_init();
 
   void plist_print();
 
-  int plist_insert(int id, char* name, int parent_id, int exit_status);
+  int plist_insert(int id, char* name, int parent_id);
   
-  int plist_find(int id);
+  struct plist* plist_find(int id);
 
-  void plist_remove(int id);
+  int plist_remove(int id);
 
 
 #endif

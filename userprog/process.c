@@ -184,6 +184,7 @@ void* setup_main_stack(const char* command_line, void* stack_top)
  * the process subsystem. */
 void process_init(void)
 {
+  plist_init();
 }
 
 /* This function is currently never called. As thread_exit does not
@@ -192,7 +193,43 @@ void process_init(void)
  * in process_cleanup, and that process_cleanup are already called
  * from thread_exit - do not call cleanup twice! */
 void process_exit(int status UNUSED)
-{
+{   
+
+   //printf("process: ");
+   struct plist* process = plist_find(thread_current()->tid);
+   
+   if(process != NULL){
+   
+     process->exit_status = status;
+     
+    // printf("parent process: ");
+     struct plist* parent = plist_find(process->parent);
+     
+     process->alive = false;
+     sema_up(&process->semaphore);
+     
+       if(process->pid == 3){
+          //printf("\n\nPID == 3 EXIT THREAD \n");
+          thread_exit();
+       }
+
+	   if(parent != NULL){
+
+		    if(!parent->alive){
+		       // printf("\n\n\nPLIST_REMOVE IN IF ID: %dn\n\n",process->pid);
+			    plist_remove(process->pid);
+		    }
+		
+	   }
+	   	else if(process->parent >= 3  && parent == NULL){
+	     //printf("\n\n\nPLIST_REMOVE IN ELSE ID: %dn\n\n",process->pid);
+		 plist_remove(process->pid);
+		 }	
+		
+	plist_remove_zombies(process->pid);
+   }
+
+   thread_exit();
 }
 
 /* Print a list of all running processes. The list shall include all
@@ -207,6 +244,7 @@ struct parameters_to_start_process
   char* command_line;
   struct semaphore semaphore;
   bool success;
+  int parent_id;
 };
 
 static void
@@ -229,6 +267,8 @@ process_execute (const char *command_line)
   /* LOCAL variable will cease existence when function return! */
   struct parameters_to_start_process arguments;
 
+  arguments.parent_id = thread_current()->tid;
+
   sema_init(&arguments.semaphore, 0);
 
   debug("%s#%d: process_execute(\"%s\") ENTERED\n",
@@ -246,10 +286,11 @@ process_execute (const char *command_line)
   /* SCHEDULES function `start_process' to run (LATER) */
   thread_id = thread_create (debug_name, PRI_DEFAULT,
                              (thread_func*)start_process, &arguments);
-
+   
+  sema_down(&arguments.semaphore);
   if(arguments.success && thread_id != TID_ERROR){
     process_id = thread_id;
-    sema_down(&arguments.semaphore);
+
   }
   else 
     process_id = -1;
@@ -265,7 +306,6 @@ process_execute (const char *command_line)
         thread_current()->name,
         thread_current()->tid,
         command_line, process_id);
-
   /* MUST be -1 if `load' in `start_process' return false */
   return process_id;
 }
@@ -287,6 +327,8 @@ start_process (struct parameters_to_start_process* parameters)
         thread_current()->tid,
         parameters->command_line);
   
+
+  debug("#FILE NAME: %s \n", file_name);
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
@@ -300,15 +342,16 @@ start_process (struct parameters_to_start_process* parameters)
         thread_current()->name,
         thread_current()->tid,
         success);
-  
+
   if (success)
   {
     /* We managed to load the new program to a process, and have
        allocated memory for a process stack. The stack top is in
        if_.esp, now we must prepare and place the arguments to main on
        the stack. */
+       
      if_.esp = setup_main_stack(parameters->command_line, if_.esp);
-  
+     plist_insert(thread_current()->tid, thread_current()->name, parameters->parent_id);
     /* A temporary solution is to modify the stack pointer to
        "pretend" the arguments are present on the stack. A normal
        C-function expects the stack to contain, in order, the return
@@ -338,7 +381,7 @@ start_process (struct parameters_to_start_process* parameters)
      - File do not contain a valid program
      - Not enough memory
   */
-  if ( ! success )
+  if ( !success )
   {
     thread_exit ();
   }
@@ -364,15 +407,23 @@ start_process (struct parameters_to_start_process* parameters)
 int
 process_wait (int child_id) 
 {
+
   int status = -1;
   struct thread *cur = thread_current ();
-
+ 
   debug("%s#%d: process_wait(%d) ENTERED\n",
         cur->name, cur->tid, child_id);
-  /* Yes! You need to do something good here ! */
+  
+  struct plist* child = plist_find(child_id);
+
+  if(child != NULL && child->parent == cur->tid && child->used){
+    sema_down(&child->semaphore);
+    status = plist_remove(child_id);
+  }
+
   debug("%s#%d: process_wait(%d) RETURNS %d\n",
         cur->name, cur->tid, child_id, status);
-  
+
   return status;
 }
 
@@ -404,6 +455,15 @@ process_cleanup (void)
    * that may sometimes poweroff as soon as process_wait() returns,
    * possibly before the prontf is completed.)
    */
+
+
+  struct plist* tmp = plist_find(thread_current()->tid);
+  if(tmp != NULL){
+    status = tmp->exit_status;
+  }
+  else
+    debug("#\nprocess_cleanup failed, id: %d\n",thread_current()->tid);
+
   printf("%s: exit(%d)\n", thread_name(), status);
   
   /* Destroy the current process's page directory and switch back

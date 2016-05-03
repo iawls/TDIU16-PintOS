@@ -15,6 +15,7 @@
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
 #include "devices/input.h"
+#include "devices/timer.h"
 #include "flist.h"
 
 static void syscall_handler (struct intr_frame *);
@@ -178,6 +179,14 @@ void sys_filesize(struct intr_frame* f)
     f->eax = -1;
 };
 
+void sys_sleep(int millis)
+{
+  timer_init();
+  timer_msleep(millis);
+}
+
+
+
 static void
 syscall_handler (struct intr_frame *f) 
 {
@@ -189,8 +198,8 @@ syscall_handler (struct intr_frame *f)
 	break;
     
     case SYS_EXIT : 
-	printf("\n\nexit status: %d\n\n", esp[1]);
-	thread_exit();
+	//printf("\n\nexit status: %d\n\n", esp[1]);
+	process_exit(esp[1]);
 	break;
 	
     case SYS_READ :
@@ -229,8 +238,20 @@ syscall_handler (struct intr_frame *f)
 	sys_filesize(f);
 	break;
     
-    case SYS_PLIST : 
+    case SYS_PLIST :
 	plist_print();
+	break;
+
+    case SYS_EXEC : 
+	f->eax = process_execute(esp[1]);
+	break;
+
+    case SYS_SLEEP :
+	sys_sleep(esp[1]);
+	break;
+	
+	case SYS_WAIT :
+	f->eax = process_wait(esp[1]);
 	break;
 
     default:
