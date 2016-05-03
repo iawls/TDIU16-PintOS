@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "userprog/plist.h"
 #include "devices/kbd.h"
 #include "devices/input.h"
 #include "devices/serial.h"
@@ -113,13 +114,12 @@ main (void)
   thread_start ();
   serial_init_queue ();
   timer_calibrate ();
-
 #ifdef FILESYS
   /* Initialize file system. */
   disk_init ();
   filesys_init (format_filesys);
 #endif
-
+  //plist_init();
   printf ("Boot complete.\n");
   
   /* Run actions specified on kernel command line. */
