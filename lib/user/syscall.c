@@ -188,11 +188,14 @@ inumber (int fd)
 void 
 sleep(int millis)
 {
+  return syscall1 (SYS_SLEEP, millis);
 }
 
 void 
 plist (void)
 {
+
+  return syscall0(SYS_PLIST);
 }
 
 
