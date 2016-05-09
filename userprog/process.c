@@ -194,7 +194,7 @@ void process_init(void)
  * from thread_exit - do not call cleanup twice! */
 void process_exit(int status UNUSED)
 {   
-     printf("\n\n ######################### START EXIT , TID: %d ##############################\n\n",thread_current()->tid);
+    // printf("\n\n ######################### START EXIT , TID: %d ##############################\n\n",thread_current()->tid);
    //printf("process: ");
    struct plist* process = plist_find(thread_current()->tid);
    
@@ -230,9 +230,10 @@ void process_exit(int status UNUSED)
 	plist_remove_zombies(process->pid);
    }
    else{
-     //plist_print();
-     printf("\n\n ######################### PROCESS == NULL, TID: %d ##############################\n\n",thread_current()->tid);
+
+    // printf("\n\n ######################### PROCESS == NULL, TID: %d ##############################\n\n",thread_current()->tid);
     }
+
    thread_exit();
 }
 
@@ -240,6 +241,7 @@ void process_exit(int status UNUSED)
  * relevant debug information in a clean, readable format. */
 void process_print_list()
 {
+  plist_print();
 }
 
 
@@ -290,15 +292,15 @@ process_execute (const char *command_line)
   /* SCHEDULES function `start_process' to run (LATER) */
   thread_id = thread_create (debug_name, PRI_DEFAULT,
                              (thread_func*)start_process, &arguments);
-   
-  sema_down(&arguments.semaphore);
-  if(arguments.success && thread_id != TID_ERROR){
+
+  if(thread_id != TID_ERROR){
+    sema_down(&arguments.semaphore);
+  }
+
+  if(arguments.success){
     process_id = thread_id;
 
   }
-  else 
-    process_id = -1;
-
   /* AVOID bad stuff by turning off. YOU will fix this! */
   //power_off();
   
