@@ -1,7 +1,8 @@
 #ifndef _PLIST_H_
 #define _PLIST_H_
+#include "threads/synch.h"
 #include <stdbool.h>
-#include "../threads/synch.h"
+
 
 /* Place functions to handle a running process here (process list).
    
@@ -44,9 +45,9 @@
 
 
   
-  void plist_init();
+  void plist_init(void);
 
-  void plist_print();
+  void plist_print(void);
 
   int plist_insert(int id, char* name, int parent_id);
   
