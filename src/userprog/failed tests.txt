@@ -1,0 +1,27 @@
+FAIL tests/userprog/multi-recurse
+FAIL tests/klaar/read-bad-buf
+FAIL tests/klaar/exec-corrupt
+FAIL tests/userprog/args-none
+FAIL tests/userprog/args-dbl-space
+FAIL tests/userprog/sc-bad-sp
+FAIL tests/userprog/sc-bad-arg
+FAIL tests/userprog/create-null
+FAIL tests/userprog/create-bad-ptr
+FAIL tests/userprog/open-normal
+FAIL tests/userprog/open-missing
+FAIL tests/userprog/open-null
+FAIL tests/userprog/open-bad-ptr
+FAIL tests/userprog/close-normal
+FAIL tests/userprog/read-bad-ptr
+FAIL tests/userprog/write-bad-ptr
+FAIL tests/userprog/write-bad-fd
+FAIL tests/userprog/exec-arg
+FAIL tests/userprog/exec-multiple
+FAIL tests/userprog/exec-missing
+FAIL tests/userprog/exec-bad-ptr
+FAIL tests/userprog/wait-killed
+FAIL tests/userprog/wait-bad-pid
+FAIL tests/userprog/multi-recurse
+FAIL tests/filesys/base/lg-full
+FAIL tests/filesys/base/sm-create
+

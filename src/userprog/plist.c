@@ -2,7 +2,7 @@
 #include "plist.h"
 #include "threads/malloc.h"
 
-static struct plist process_list[61]; 
+static struct plist process_list[256]; 
 
 static struct lock plist_lock;
 
@@ -22,9 +22,10 @@ void plist_print(void){
   int list_size = sizeof(process_list)/sizeof(process_list[0]);
   lock_acquire(&plist_lock);
   for(i; i < list_size ; ++i){
-    if(process_list[i].used && process_list[i].name != NULL){
-      printf("INDEX: %3d PID: %3d NAME: %15s PARENT: %3d EXIT_STATUS: %3d USED: %1d ALIVE: %1d PARENT ALIVE: %1d\n",i , process_list[i].pid, 
-	     process_list[i].name, process_list[i].parent, process_list[i].exit_status, process_list[i].used, process_list[i].alive, process_list[i].parent_alive);
+    if(//process_list[i].used &&
+ process_list[i].name != NULL){
+      printf("INDEX: %3d PID: %3d NAME: %15s PARENT: %3d EXIT_STATUS: %3d USED: %1d ALIVE: %1d PARENT: %1d\n",i , process_list[i].pid, 
+	     process_list[i].name, process_list[i].parent, process_list[i].exit_status, process_list[i].used, process_list[i].alive, process_list[i].parent);
     }
   }
   lock_release(&plist_lock);
@@ -81,6 +82,7 @@ void plist_remove_zombies(int parent_id){
   for(i; i < list_size; ++i){
     if(process_list[i].parent == parent_id && !process_list[i].alive){
       free(process_list[i].name);
+      process_list[i].name = NULL;
       process_list[i].used = false; 
     }
   }
@@ -100,6 +102,7 @@ int plist_remove(int id){
       exit_status = process_list[i].exit_status;
       if(process_list[i].name != NULL){
 	free(process_list[i].name);
+	process_list[i].name = NULL;
       }
       process_list[i].used = false; 
       lock_release(&plist_lock);

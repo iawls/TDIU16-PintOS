@@ -20,6 +20,9 @@
 
 static void syscall_handler (struct intr_frame *);
 
+bool verify_fix_length(void* start, int length);
+bool verify_variable_length(char* start);
+
 void
 syscall_init (void) 
 {
@@ -55,46 +58,59 @@ void sys_read(struct intr_frame *f)
   char* buf = (char*)esp[2];
   struct thread* t = thread_current();
   struct file* tmp_file;
-  if(fd == STDIN_FILENO){		  
-    for(i; i < length; ++i){
+
+  if(verify_fix_length( (void*)buf ,length) ){
+    if(fd == STDIN_FILENO){		  
+      for(i; i < length; ++i){
 	c = input_getc();
 	if(c == '\r')
 	  c = '\n';
 	buf[i] = c;
 	putbuf(&c,1);
+      }
+      f->eax = i; 
     }
-    f->eax = i; 
-  }
-  else if(2 <= fd && fd <= 16){
-    tmp_file = map_find(&(t->filetable),fd);
-    if(tmp_file == NULL){
-      f->eax = -1;
+    else if(2 <= fd && fd <= 16){
+      tmp_file = map_find(&(t->filetable),fd);
+      if(tmp_file == NULL){
+	f->eax = -1;
+      }
+      else
+	f->eax = file_read(tmp_file, buf, length);
     }
-    else
-    f->eax = file_read(tmp_file, buf, length);
   }
   else
-    f->eax= -1;
+    process_exit(-1);
+  // f->eax= -1;
 };
 
 void sys_write(struct intr_frame *f)
 {
   int32_t* esp = (int32_t*)f->esp;
   struct thread* t = thread_current();
-
   int fd = esp[1];
   char* buf = (char*)esp[2];
   unsigned length = esp[3]; 
 
-   if(fd == STDOUT_FILENO){		  
-     putbuf(buf,length);
-     f->eax = length;
+  if(verify_fix_length( (void*)buf ,length) && verify_variable_length(buf) ){
+    if(fd == STDOUT_FILENO){		  
+      putbuf(buf,length);
+      f->eax = length;
+    }
+    else if(2 <= fd && fd <= 16){
+      struct file* file = map_find(&(t->filetable), fd);
+      if(file != NULL)
+	f->eax = file_write (file, buf, length);
+      else
+	f->eax = -1;
+    }
+	
   }
-  else if(2 <= fd && fd <= 16)
-    f->eax = file_write (map_find(&(t->filetable),fd), buf, length);
   else
-    f->eax = -1;
-};
+    process_exit(-1);
+
+    // f->eax = -1;
+  };
 
 void sys_remove(struct intr_frame *f)
 {
@@ -110,6 +126,12 @@ void sys_open(struct intr_frame *f)
   int32_t* esp = (int32_t*)f->esp;
   char* file_name = esp[1];
   struct thread* t = thread_current();
+
+   if(!verify_variable_length(file_name) || file_name == NULL){
+    process_exit(-1);
+    return;
+    }
+
   struct file* filep = filesys_open(file_name);
   
   if(filep == NULL)
@@ -123,6 +145,8 @@ void sys_create(struct intr_frame *f)
   int32_t* esp = (int32_t*)f->esp;
   char* file_name = esp[1];
   unsigned file_size = esp[2];
+  if(!verify_variable_length(file_name) || file_name == NULL)
+    process_exit(-1);
 
   bool success = filesys_create(file_name, file_size);
   f->eax = success;
@@ -181,7 +205,6 @@ void sys_filesize(struct intr_frame* f)
 
 void sys_sleep(int millis)
 {
-  timer_init();
   timer_msleep(millis);
 }
 
@@ -191,6 +214,12 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
   int32_t* esp = (int32_t*)f->esp;
+  
+  if(esp >= PHYS_BASE-4 || 0 > esp || f == NULL || esp == NULL || !verify_fix_length(esp,4)) 
+    process_exit(-1);
+
+  
+
   switch (esp[0]) //get retrive call from esp 
   {
     case SYS_HALT : 
@@ -263,4 +292,58 @@ syscall_handler (struct intr_frame *f)
       thread_exit ();
     }
   }
+}
+
+bool verify_fix_length(void* start, int length)
+{ 
+  if(start >= PHYS_BASE)
+    return false;
+
+  if(pagedir_get_page(thread_current()->pagedir, start) == NULL )
+    return false;
+
+unsigned current_pg,last_pg,i = 0;
+last_pg = pg_no(start);
+  
+for(i; i < length ; ++i)
+  {
+    current_pg = pg_no(start+i); 
+    if(current_pg != last_pg){
+      last_pg = current_pg;
+      if(pagedir_get_page(thread_current()->pagedir, start+i) == NULL)
+	return false;
+    }
+  }  
+ return true;
+}
+
+/* Kontrollera alla adresser från och med start till och med den
+ * adress som först innehåller ett noll-tecken, `\0'. (C-strängar
+ * lagras på detta sätt.) */
+bool verify_variable_length(char* start)
+{
+  char* adr = start;
+  unsigned current_pg, last_pg;
+
+  if(start >= PHYS_BASE)
+    return false;
+  if(pagedir_get_page(thread_current()->pagedir,(void*)start) == NULL )
+    return false;
+
+  last_pg = pg_no(start);
+
+  while(true)
+    {
+      current_pg = pg_no(adr);
+      if(last_pg != current_pg){
+	last_pg = current_pg;
+	if(pagedir_get_page(thread_current()->pagedir,(void*)adr) == NULL)
+	  return false;
+      }
+
+      if(*adr == '\0')
+	return true;
+    
+      ++adr;
+    }
 }

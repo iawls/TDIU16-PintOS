@@ -13,6 +13,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"     /* PHYS_BASE */
 #include "threads/interrupt.h" /* if_ */
+#include "threads/init.h"      /* power_off() */
 
 /* Headers not yet used that you may need for various reasons. */
 #include "threads/synch.h"
@@ -160,8 +161,10 @@ void* setup_main_stack(const char* command_line, void* stack_top)
   {
 
     if(new_word_flag || (i == 0 && command_line[i] != ' ')){
+      if( command_line[i] != ' '){
       esp->argv[argv_c] = (char*) cmd_line_on_stack + i;
       ++argv_c;
+      }
     }
 
     if(command_line[i] != ' '){
@@ -194,45 +197,34 @@ void process_init(void)
  * from thread_exit - do not call cleanup twice! */
 void process_exit(int status UNUSED)
 {   
-    // printf("\n\n ######################### START EXIT , TID: %d ##############################\n\n",thread_current()->tid);
-   //printf("process: ");
    struct plist* process = plist_find(thread_current()->tid);
    
    if(process != NULL  && process->used){
    
      process->exit_status = status;
      
-    // printf("parent process: ");
-     struct plist* parent = plist_find(process->parent);
-     
+     struct plist* parent = plist_find(process->parent);     
 
      process->alive = false;
-     sema_up(&process->semaphore);
+     // sema_up(&process->semaphore);
      
        if(process->pid == 3){
-          //printf("\n\nPID == 3 EXIT THREAD \n");
           thread_exit();
        }
 
 	   if(parent != NULL && parent->used){
 
 		    if(!parent->alive){
-		       // printf("\n\n\nPLIST_REMOVE IN IF ID: %dn\n\n",process->pid);
 			    plist_remove(process->pid);
 		    }
 		
 	   }
-	   	else{
-	     //printf("\n\n\nPLIST_REMOVE IN ELSE ID: %dn\n\n",process->pid);
+	   else{
 		 plist_remove(process->pid);
 		 }	
 		
 	plist_remove_zombies(process->pid);
    }
-   else{
-
-    // printf("\n\n ######################### PROCESS == NULL, TID: %d ##############################\n\n",thread_current()->tid);
-    }
 
    thread_exit();
 }
@@ -374,13 +366,13 @@ start_process (struct parameters_to_start_process* parameters)
   }
 
 
-  sema_up(&parameters->semaphore);
   debug("%s#%d: start_process(\"%s\") DONE\n",
         thread_current()->name,
         thread_current()->tid,
         parameters->command_line);
   
-  
+    sema_up(&parameters->semaphore);
+
   /* If load fail, quit. Load may fail for several reasons.
      Some simple examples:
      - File doeas not exist
@@ -421,9 +413,10 @@ process_wait (int child_id)
         cur->name, cur->tid, child_id);
   
   struct plist* child = plist_find(child_id);
-
+  
   if(child != NULL && child->parent == cur->tid && child->used){
-    sema_down(&child->semaphore);
+      sema_down(&child->semaphore);
+
     status = plist_remove(child_id);
   }
 
@@ -459,7 +452,7 @@ process_cleanup (void)
    * important to do this printf BEFORE you tell the parent process
    * that you exit.  (Since the parent may be the main() function,
    * that may sometimes poweroff as soon as process_wait() returns,
-   * possibly before the prontf is completed.)
+   * possibly before the printf is completed.)
    */
 
 
@@ -469,7 +462,7 @@ process_cleanup (void)
     status = tmp->exit_status;
   }
   else{
-    debug("#\nprocess_cleanup failed, id: %d\n\n\n\n\n\n\n\n",thread_current()->tid);
+    debug("#\nprocess_cleanup failed, id: %d\n",thread_current()->tid);
 
     }
 
@@ -493,6 +486,9 @@ process_cleanup (void)
 
   debug("%s#%d: process_cleanup() DONE with status %d\n",
         cur->name, cur->tid, status);
+  if(tmp != NULL)
+  sema_up(&tmp->semaphore);
+
 }
 
 /* Sets up the CPU for running user code in the current
