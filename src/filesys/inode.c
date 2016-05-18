@@ -9,7 +9,6 @@
 #include "threads/synch.h"
 
 static struct lock inode_list_lock;
-
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
 
@@ -40,8 +39,9 @@ struct inode
     bool removed;                       /* True if deleted, false otherwise. */
     struct inode_disk data;             /* Inode content. */
     struct lock inode_lock;
-
-
+    struct lock read_lock;
+    struct semaphore semaphore;
+    int read_cnt;
   };
 
 
@@ -150,7 +150,10 @@ inode_open (disk_sector_t sector)
   inode->sector = sector;
   inode->open_cnt = 1;
   inode->removed = false;
+  inode->read_cnt = 0;
   lock_init(&inode->inode_lock); 
+  lock_init(&inode->read_lock); 
+  sema_init(&inode->semaphore,1);
   disk_read (filesys_disk, inode->sector, &inode->data);
 
  lock_release(&inode_list_lock);
@@ -234,8 +237,14 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
   uint8_t *buffer = buffer_;
   off_t bytes_read = 0;
   uint8_t *bounce = NULL;
+  
+  if(inode->read_cnt == 0)
+     sema_down(&inode->semaphore);
 
-  lock_acquire(&inode->inode_lock); 
+  lock_acquire(&inode->read_lock);
+  ++inode->read_cnt;
+  lock_release(&inode->read_lock);
+
   while (size > 0) 
     {
       /* Disk sector to read, starting byte offset within sector. */
@@ -276,8 +285,13 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
       offset += chunk_size;
       bytes_read += chunk_size;
     }
+
   free (bounce);
-  lock_release(&inode->inode_lock);
+
+  lock_acquire(&inode->read_lock);
+  if(--inode->read_cnt == 0)
+     sema_up(&inode->semaphore);
+  lock_release(&inode->read_lock);
 
   return bytes_read;
 }
@@ -294,8 +308,10 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   const uint8_t *buffer = buffer_;
   off_t bytes_written = 0;
   uint8_t *bounce = NULL;
+  
+  
+   sema_down(&inode->semaphore);
 
-  lock_acquire(&inode->inode_lock);
   while (size > 0) 
     {
       /* Sector to write, starting byte offset within sector. */
@@ -344,7 +360,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       bytes_written += chunk_size;
     }
   free (bounce);
-  lock_release(&inode->inode_lock);
+  sema_up(&inode->semaphore);
   return bytes_written;
 }
 
