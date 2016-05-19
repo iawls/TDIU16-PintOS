@@ -13,8 +13,7 @@
 
 static void fill_buffer(char* buf, int size, char c)
 {
-  int i = 0;
-  for (i; i < size; i++)
+  for (int i = 0; i < size; i++)
   {
     buf[i] = c;
   }
@@ -33,9 +32,8 @@ int main (int argc, char *argv[])
   char start = argv[1][0];
   char end   = argv[2][0];
 
-  int i = 0;
   char c = start;
-  for (i; i < TIMES; ++i)
+  for (int i = 0; i < TIMES; ++i)
   {
     fill_buffer(buffer, BIG, c);
     
