@@ -221,77 +221,80 @@ syscall_handler (struct intr_frame *f)
   
 
   switch (esp[0]) //get retrive call from esp 
-  {
+    {
     case SYS_HALT : 
-	power_off();
-	break;
+      power_off();
+      break;
     
     case SYS_EXIT : 
-	//printf("\n\nexit status: %d\n\n", esp[1]);
-	process_exit(esp[1]);
-	break;
+      //printf("\n\nexit status: %d\n\n", esp[1]);
+      process_exit(esp[1]);
+      break;
 	
     case SYS_READ :
-	sys_read(f);
-	break;
+      sys_read(f);
+      break;
 
     case SYS_WRITE : 
-	sys_write(f);
-	break;	
+      sys_write(f);
+      break;	
 	
     case SYS_OPEN : 
-	sys_open(f);
-	break;
+      sys_open(f);
+      break;
  
     case SYS_CREATE : 
-	sys_create(f);
-	break;
+      sys_create(f);
+      break;
 
     case SYS_CLOSE : 
-	sys_close(f);
-	break;
+      sys_close(f);
+      break;
    
     case SYS_REMOVE : 
-	sys_remove(f);
-	break;
+      sys_remove(f);
+      break;
 
     case SYS_SEEK : 
-	sys_seek(f);
-	break;
+      sys_seek(f);
+      break;
     
     case SYS_TELL : 
-	sys_tell(f);
-	break;
+      sys_tell(f);
+      break;
 
     case SYS_FILESIZE : 
-	sys_filesize(f);
-	break;
+      sys_filesize(f);
+      break;
     
     case SYS_PLIST :
-	plist_print();
-	break;
+      plist_print();
+      break;
 
     case SYS_EXEC : 
+      if(esp[1] == NULL || !verify_variable_length(esp[1]))
+	process_exit(-1);
+      else
 	f->eax = process_execute(esp[1]);
-	break;
+      break;
 
     case SYS_SLEEP :
-	sys_sleep(esp[1]);
-	break;
+      sys_sleep(esp[1]);
+      break;
 	
-	case SYS_WAIT :
-	f->eax = process_wait(esp[1]);
-	break;
+    case SYS_WAIT :
+      f->eax = process_wait(esp[1]);
+      break;
 
     default:
-    {
-      printf ("\n\nExecuted an unknown system call!\n");
-      printf ("\n\nStack top + 0: %d\n", esp[0]);
-      printf ("\n\nStack top + 1: %d\n\n\n", esp[1]);
+      {
+	printf ("\n\nExecuted an unknown system call!\n");
+	printf ("\n\nStack top + 0: %d\n", esp[0]);
+	printf ("\n\nStack top + 1: %d\n\n\n", esp[1]);
       
-      thread_exit ();
+	thread_exit ();
+      }
     }
-  }
 }
 
 bool verify_fix_length(void* start, int length)

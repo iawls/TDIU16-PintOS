@@ -262,9 +262,10 @@ process_execute (const char *command_line)
   tid_t thread_id = -1;
   int  process_id = -1;
   
+  
   /* LOCAL variable will cease existence when function return! */
   struct parameters_to_start_process arguments;
-
+  
   arguments.parent_id = thread_current()->tid;
 
   sema_init(&arguments.semaphore, 0);
@@ -461,10 +462,6 @@ process_cleanup (void)
   if(tmp != NULL){
     status = tmp->exit_status;
   }
-  else{
-    debug("#\nprocess_cleanup failed, id: %d\n",thread_current()->tid);
-
-    }
 
   printf("%s: exit(%d)\n", thread_name(), status);
   
