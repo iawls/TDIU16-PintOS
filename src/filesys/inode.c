@@ -237,11 +237,10 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
   uint8_t *buffer = buffer_;
   off_t bytes_read = 0;
   uint8_t *bounce = NULL;
-  
+ 
+  lock_acquire(&inode->read_lock);
   if(inode->read_cnt == 0)
      sema_down(&inode->semaphore);
-
-  lock_acquire(&inode->read_lock);
   ++inode->read_cnt;
   lock_release(&inode->read_lock);
 
@@ -310,7 +309,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   uint8_t *bounce = NULL;
   
   
-   sema_down(&inode->semaphore);
+  sema_down(&inode->semaphore);
 
   while (size > 0) 
     {

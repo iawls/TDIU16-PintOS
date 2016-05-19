@@ -7,13 +7,14 @@
 #include "threads/malloc.h"
 #include "threads/synch.h"
 
-struct lock dir_lock;
 
 /* A directory. */
 struct dir 
   {
     struct inode *inode;                /* Backing store. */
     off_t pos;                          /* Current position. */
+    struct lock dir_lock;
+
   };
 
 /* A single directory entry. */
@@ -41,6 +42,7 @@ dir_open (struct inode *inode)
   if (inode != NULL && dir != NULL)
     {
       dir->inode = inode;
+      lock_init(&(dir->dir_lock));
       dir->pos = 0;
       return dir;
     }
@@ -123,7 +125,7 @@ dir_lookup (const struct dir *dir, const char *name,
             struct inode **inode) 
 {
   struct dir_entry e;
-
+  lock_acquire(&(dir->dir_lock));
   ASSERT (dir != NULL);
   ASSERT (name != NULL);
 
@@ -131,7 +133,7 @@ dir_lookup (const struct dir *dir, const char *name,
     *inode = inode_open (e.inode_sector);
   else
     *inode = NULL;
-
+  lock_release(&(dir->dir_lock));
   return *inode != NULL;
 }
 
@@ -148,6 +150,7 @@ dir_add (struct dir *dir, const char *name, disk_sector_t inode_sector)
   off_t ofs;
   bool success = false;
   
+  lock_acquire(&(dir->dir_lock));
   ASSERT (dir != NULL);
   ASSERT (name != NULL);
 
@@ -176,8 +179,9 @@ dir_add (struct dir *dir, const char *name, disk_sector_t inode_sector)
   strlcpy (e.name, name, sizeof e.name);
   e.inode_sector = inode_sector;
   success = inode_write_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
-
+ 
  done:
+  lock_release(&(dir->dir_lock));
   return success;
 }
 
@@ -191,6 +195,7 @@ dir_remove (struct dir *dir, const char *name)
   struct inode *inode = NULL;
   bool success = false;
   off_t ofs;
+  lock_acquire(&(dir->dir_lock));
 
   ASSERT (dir != NULL);
   ASSERT (name != NULL);
@@ -215,6 +220,7 @@ dir_remove (struct dir *dir, const char *name)
 
  done:
   inode_close (inode);
+  lock_release(&(dir->dir_lock));
   return success;
 }
 
@@ -225,6 +231,7 @@ bool
 dir_readdir (struct dir *dir, char name[NAME_MAX + 1])
 {
   struct dir_entry e;
+  lock_acquire(&(dir->dir_lock));
 
   while (inode_read_at (dir->inode, &e, sizeof e, dir->pos) == sizeof e) 
     {
@@ -235,5 +242,6 @@ dir_readdir (struct dir *dir, char name[NAME_MAX + 1])
           return true;
         } 
     }
+  lock_release(&(dir->dir_lock));
   return false;
 }
