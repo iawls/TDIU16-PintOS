@@ -5,11 +5,14 @@
 static struct plist process_list[256]; 
 
 static struct lock plist_lock;
+static struct lock plist_cleanup_lock;
 
 void plist_init(void){
   int i = 0;
   int list_size = sizeof(process_list)/sizeof(process_list[0]);
   lock_init(&plist_lock);
+  lock_init(&plist_cleanup_lock);
+
   for(i; i < list_size; ++i){
     process_list[i].used = false;
     sema_init(&process_list[i].semaphore,0);
@@ -111,4 +114,33 @@ int plist_remove(int id){
   }
   lock_release(&plist_lock);
   return -1;
+}
+
+void plist_set_status(struct plist* process, int status)
+{
+  lock_acquire(&plist_cleanup_lock);
+  process->exit_status = status;
+  lock_release(&plist_cleanup_lock);
+}
+
+int plist_cleanup_help(struct plist* process)
+{
+  int status = -1;
+  lock_acquire(&plist_cleanup_lock);
+  if(process != NULL  && process->used){
+    status = process->exit_status;
+    struct plist* parent = plist_find(process->parent);     
+
+    if(parent != NULL && parent->used){
+      if(!parent->alive){
+	plist_remove(process->pid);
+      }		
+    }
+    else{
+      plist_remove(process->pid);
+    }		
+    plist_remove_zombies(process->pid);
+  }
+  lock_release(&plist_cleanup_lock);
+  return status;
 }

@@ -92,7 +92,7 @@ void sys_write(struct intr_frame *f)
   char* buf = (char*)esp[2];
   unsigned length = esp[3]; 
 
-  if(verify_fix_length( (void*)buf ,length) && verify_variable_length(buf) ){
+  if(verify_fix_length( (void*)buf ,length)){
     if(fd == STDOUT_FILENO){		  
       putbuf(buf,length);
       f->eax = length;
@@ -116,6 +116,11 @@ void sys_remove(struct intr_frame *f)
 {
   int32_t* esp = (int32_t*)f->esp;
   char* file_name = esp[1];
+
+  if(!verify_variable_length(file_name) || file_name == NULL){
+    process_exit(-1);
+    return;
+  }
 
   bool success = filesys_remove(file_name);
   f->eax = success;   
@@ -214,19 +219,21 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
   int32_t* esp = (int32_t*)f->esp;
-  
-  if(esp >= PHYS_BASE-4 || 0 > esp || f == NULL || esp == NULL || !verify_fix_length(esp,4)) 
+
+ if(esp >= PHYS_BASE-4 || 0 > esp || f == NULL || esp == NULL || !verify_fix_length(esp,4))
     process_exit(-1);
 
-  
+ int argc_ = argc[esp[0]];
+ if(!verify_fix_length(esp+1, argc_*4))
+     process_exit(-1);
 
-  switch (esp[0]) //get retrive call from esp 
-    {
-    case SYS_HALT : 
-      power_off();
-      break;
+    switch (esp[0]) //get retrive call from esp 
+      {
+      case SYS_HALT : 
+	power_off();
+	break;
     
-    case SYS_EXIT : 
+      case SYS_EXIT : 
       //printf("\n\nexit status: %d\n\n", esp[1]);
       process_exit(esp[1]);
       break;
@@ -292,32 +299,33 @@ syscall_handler (struct intr_frame *f)
 	printf ("\n\nStack top + 0: %d\n", esp[0]);
 	printf ("\n\nStack top + 1: %d\n\n\n", esp[1]);
       
-	thread_exit ();
+	//thread_exit ();
+	process_exit(-1);
       }
     }
 }
 
 bool verify_fix_length(void* start, int length)
 { 
-  if(start >= PHYS_BASE)
+  if(start >= PHYS_BASE || start == NULL || length < 0 || !is_user_vaddr(start+length))
     return false;
 
   if(pagedir_get_page(thread_current()->pagedir, start) == NULL )
     return false;
 
-unsigned current_pg,last_pg,i = 0;
-last_pg = pg_no(start);
+  unsigned current_pg,last_pg,i = 0;
+  last_pg = pg_no(start);
   
-for(i; i < length ; ++i)
-  {
-    current_pg = pg_no(start+i); 
-    if(current_pg != last_pg){
-      last_pg = current_pg;
-      if(pagedir_get_page(thread_current()->pagedir, start+i) == NULL)
-	return false;
-    }
-  }  
- return true;
+  for(i; i < length ; ++i)
+    {
+      current_pg = pg_no(start+i); 
+      if(current_pg != last_pg){
+	last_pg = current_pg;
+	if(pagedir_get_page(thread_current()->pagedir, start+i) == NULL)
+	  return false;
+      }
+    }  
+  return true;
 }
 
 /* Kontrollera alla adresser från och med start till och med den
@@ -328,8 +336,9 @@ bool verify_variable_length(char* start)
   char* adr = start;
   unsigned current_pg, last_pg;
 
-  if(start >= PHYS_BASE)
+  if(start >= PHYS_BASE || start == NULL)
     return false;
+
   if(pagedir_get_page(thread_current()->pagedir,(void*)start) == NULL )
     return false;
 

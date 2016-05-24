@@ -320,26 +320,8 @@ start_process (struct parameters_to_start_process* parameters)
 
   if (success)
   {
-    /* We managed to load the new program to a process, and have
-       allocated memory for a process stack. The stack top is in
-       if_.esp, now we must prepare and place the arguments to main on
-       the stack. */
-       
      if_.esp = setup_main_stack(parameters->command_line, if_.esp);
      plist_insert(thread_current()->tid, thread_current()->name, parameters->parent_id);
-    /* A temporary solution is to modify the stack pointer to
-       "pretend" the arguments are present on the stack. A normal
-       C-function expects the stack to contain, in order, the return
-       address, the first argument, the second argument etc. */
-    
-   // HACK if_.esp -= 12; /* Unacceptable solution. */
-
-    /* The stack and stack pointer should be setup correct just before
-       the process start, so this is the place to dump stack content
-       for debug purposes. Disable the dump when it works. */
-    
-    //dump_stack ( PHYS_BASE + 15, PHYS_BASE - if_.esp + 16 );
-
   }
 
 
